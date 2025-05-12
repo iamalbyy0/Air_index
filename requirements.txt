@@ -1,6 +1,7 @@
 streamlit as st
 pandas as pd
 numpy as np
+matplotlib
 matplotlib.pyplot as plt
 seaborn as sns
 PIL import Image
