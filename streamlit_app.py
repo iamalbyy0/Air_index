@@ -27,29 +27,41 @@ def load_data():
     file_path = "cleaned_data.csv"
     file_id = "1nnM-U_h1ufa8yafaIsciMr6x3t-2W5X3"
     url = f"https://drive.google.com/uc?id={file_id}"
+    st.write("📥 Checking for dataset...")
+    output = 'cleaned_data.csv'
+    gdown.download(url, file_path, quiet=False)
+    df = pd.read_csv(file_path)
+
 
     if not os.path.exists(file_path):
         st.info("Downloading dataset from Google Drive...")
         try:
-            gdown.download(url, file_path, quiet=False)
+            output = gdown.download(url, file_path, quiet=False)
+            if output is None:
+                st.error("❌ gdown.download returned None. Possibly wrong file ID or access issue.")
+                return None
         except Exception as e:
-            st.error(f"Download failed: {e}")
+            st.error(f"❌ Exception during download: {e}")
             return None
+    
 
     try:
+        
         data = pd.read_csv(file_path)
         numeric_cols = data.select_dtypes(include=['number']).columns
         data[numeric_cols] = data[numeric_cols].fillna(data[numeric_cols].mean())
+        st.success("✅ Data loaded successfully.")
         return data
     except Exception as e:
-        st.error(f"Failed to load CSV: {e}")
+        st.error(f"❌ Failed to read CSV: {e}")
         return None
-
+    
+    
 data = load_data()
 
 # ------------------- SIDEBAR ------------------- #
 st.sidebar.title("Navigation")
-page = st.sidebar.selectbox("Go to", ["Welcome", "Data Overview", "EDA Analysis", "Model "])
+page = st.sidebar.selectbox("Go to", ["Welcome", "Data Overview", "EDA Analysis", "Model Prediction"])
 
 # ------------------- WELCOME PAGE ------------------- #
 if page == "Welcome":
@@ -276,8 +288,7 @@ elif page == "EDA Analysis":
             autopct='%1.1f%%', shadow=True, startangle=140)
     ax5.set_title("Average Pollutant Contribution")
     st.pyplot(fig5)
-else:
-    st.warning("No data loaded.")
+
 
 
 
@@ -304,7 +315,9 @@ elif page == "Model Prediction":
         # Correlation Heatmap
         st.subheader("📊 Correlation Heatmap")
         fig2, ax2 = plt.subplots(figsize=(10, 6))
-        sns.heatmap(data.corr(), annot=True, cmap='coolwarm', fmt=".2f", ax=ax2)
+        numeric_data = data.select_dtypes(include=['number'])
+        sns.heatmap(numeric_data.corr(), annot=True, cmap='coolwarm', fmt=".2f", ax=ax2)
+
         st.pyplot(fig2)
 
         # Model training and evaluation
@@ -318,7 +331,7 @@ elif page == "Model Prediction":
         X_scaled = scaler.fit_transform(X)
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-        model_choice = st.selectbox("Choose a model", ["Linear Regression", "Random Forest", "Gradient Boosting"])
+        model_choice = st.selectbox("Choose a model", ["Linear Regression", "Random Forest(Time Consuming)", "Gradient Boosting"])
 
         if model_choice == "Linear Regression":
             model = LinearRegression()
@@ -329,7 +342,17 @@ elif page == "Model Prediction":
 
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
+        
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        
+        # Display results (you'd run model prediction before this part)
+        st.markdown("---")
+        st.markdown("**Mean Squared Error**")
+        st.markdown(f"<h1 style='font-size: 48px; color: #333;'>{mse:.2f}</h1>", unsafe_allow_html=True)
 
+        st.markdown("**R-squared Score**")
+        st.markdown(f"<h1 style='font-size: 48px; color: #333;'>{r2:.2f}</h1>", unsafe_allow_html=True)
         st.write(f"**MSE:** {mean_squared_error(y_test, y_pred):.2f}")
         st.write(f"**R² Score:** {r2_score(y_test, y_pred):.2f}")
 
